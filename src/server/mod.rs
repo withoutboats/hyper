@@ -391,13 +391,17 @@ impl<S, B> Server<S, B>
 
         // Future for our server's execution
         let srv = listener.incoming().for_each(|(socket, addr)| {
-            let s = NotifyService {
-                inner: try!(new_service.new_service()),
-                info: Rc::downgrade(&info),
-            };
-            info.borrow_mut().active += 1;
-            protocol.bind_connection(&handle, socket, addr, s);
-            Ok(())
+            let protocol = &protocol;
+            let handle = &handle;
+            let info = &info;
+            new_service.new_service().map(move |service| {
+                let s = NotifyService {
+                    inner: service,
+                    info: Rc::downgrade(&info),
+                };
+                info.borrow_mut().active += 1;
+                protocol.bind_connection(&handle, socket, addr, s);
+            })
         });
 
         // for now, we don't care if the shutdown signal succeeds or errors
